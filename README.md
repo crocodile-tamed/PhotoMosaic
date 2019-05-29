@@ -7,3 +7,8 @@ Huang, Chenbin and Zhang, Qifan
 ### RawImages
 
 All the images used in this project are stored here.
+
+## Dependencies
+
+numpy
+opencv
