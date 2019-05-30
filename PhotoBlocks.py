@@ -5,20 +5,21 @@ import cv2
 class Block:
     '''class for blocks in image(x,y)'''
 
-    def __init__(self, pos_x, pos_y, img):
+    def __init__(self, pos_x, pos_y, img, b_size):
         self.pos = [pos_x, pos_y]
         self.img = img #64*64*3
-        self.partition() # get areas and feature values
+        self.partition(b_size) # get areas and feature values
         self.photo_match_id = None # idx in photo_ids
         self.photo_ids = None # store 20 smallest photo's idx in element string
         self.photo_dis = None # store the corresponding distances to photo_ids
 
-    def partition(self): #BGR 4*4 * 3 each 16*16
+    def partition(self, b_size): #BGR 4*4 * 3 each 16*16
         self.features = np.array([[[0 for _ in range(3)] for _ in range(4)] for _ in range(4)])
+        marks = [0, math.ceil(0.25*b_size), math.ceil(0.5*b_size), math.ceil(0.75*b_size), b_size]
         for _i in range(4):
             for _j in range(4):
                 # self.cal_feature_value(_i, _j)
-                segment = self.img[_i*16:(_i+1)*16, _j*16:(_j+1)*16, :]
+                segment = self.img[marks[_i]:marks[_i+1], marks[_j]:marks[_j+1], :]
                 self.features[_i, _j, 0] = np.mean(segment[..., 0])
                 self.features[_i, _j, 1] = np.mean(segment[..., 1])
                 self.features[_i, _j, 2] = np.mean(segment[..., 2])
@@ -49,8 +50,8 @@ def difference(ori_b, cmp_b):
     return np.sum((ori_b-cmp_b)**2)
 
 class CmpPhoto:
-    def __init__(self, img, id_):
-        self.img = cv2.resize(img, (64, 64))
+    def __init__(self, img, id_, b_size):
+        self.img = cv2.resize(img, (b_size, b_size))
         self.id_ = id_
         self.partition()
 

@@ -1,5 +1,7 @@
 import math
 import heapq
+import sys
+import getopt
 from time import time
 import cv2
 import numpy as np
@@ -8,7 +10,10 @@ import photoblocks as pb
 
 
 DIR = "./RawImage/"
-OUTNAME = 'result_to_step2_zz.jpg'
+BG_NAME = "0.jpg"
+OUTNAME = 'test'
+IM_SHOW = True
+IM_WRITE = False
 B_SIZE = 64 #block size
 # COLOR_DIFF_THRE = 1
 PHOTO_MAX = 300
@@ -24,7 +29,7 @@ def main(bg_img, dir_):
     [bg_rows, bg_cols, _] = bg_img.shape #type = np.ndarray(rols,cols,3)
     b_rows = math.ceil(bg_rows / B_SIZE)
     b_cols = math.ceil(bg_cols / B_SIZE)
-    print(b_rows, b_cols)
+    # print(b_rows, b_cols)
     bg_img = cv2.resize(bg_img, (B_SIZE*b_cols, B_SIZE*b_rows)) # round to B_SIZE*n
 
     blocks = [] #blocks[bx in row ][by in col]
@@ -32,16 +37,16 @@ def main(bg_img, dir_):
     for _bx in range(b_rows):
         for _by in range(b_cols):
             new_block = pb.Block(_bx, _by, \
-                bg_img[B_SIZE*_bx:B_SIZE*(_bx+1), B_SIZE*_by:B_SIZE*(_by+1), :])
+                bg_img[B_SIZE*_bx:B_SIZE*(_bx+1), B_SIZE*_by:B_SIZE*(_by+1), :], B_SIZE)
             blocks.append(new_block)
     #blocks[bx in row ][by in col] = blocks[bx*b_cols + by]
 
     element_photos = []
-    for _p in range(1, PHOTO_MAX):
+    for _p in range(0, PHOTO_MAX):
         path = dir_ + str(_p) + ".jpg"
         img = cv2.imread(path)
         if img is not None:
-            element_photos.append(pb.CmpPhoto(img, _p))
+            element_photos.append(pb.CmpPhoto(img, _p, B_SIZE))
         # if (_p % 100) == 1:
         #     print(element_photos[-1].features)
 
@@ -81,11 +86,60 @@ def main(bg_img, dir_):
 
     return output.astype(np.uint8)
 
+def deal_args():
+    argv = sys.argv[1:]
+    try:
+        opts, _ = getopt.getopt(argv, "hd:i:o:v:b:m:c:", \
+            ["input=", "dir=", "output=", "visual=", "blocksize=", "photomax=", "checkdepth="])
+    except getopt.GetoptError:
+        global HELP_INFO
+        raise ArgError(HELP_INFO)
+    if opts == []:
+        print("""
+******************************************
+* arguments available! more info with -h *
+******************************************
+""")
+    for opt, arg in opts:
+        # print(opt, arg)
+        if opt in ('-d', '--dir'):
+            global DIR
+            DIR = check_arg('d', arg)
+        elif opt in ('-i', '--input'):
+            global BG_NAME
+            BG_NAME = check_arg('i', arg)
+        elif opt in ('-o', '--output'):
+            global OUTNAME
+            global IM_WRITE
+            IM_WRITE = True
+            OUTNAME = check_arg('o', arg)
+        elif opt in ('-v', '--visual'):
+            global IM_SHOW
+            IM_SHOW = check_arg('v', arg)
+        elif opt in ('-b', '--blocksize'):
+            global B_SIZE
+            B_SIZE = check_arg('b', arg)
+        elif opt in ('-m', '--photomax'):
+            global PHOTO_MAX
+            PHOTO_MAX = check_arg('m', arg)
+        elif opt in ('-c', '--checkdepth'):
+            global CHECK_DEPTH
+            CHECK_DEPTH = check_arg('c', arg)
+        else:
+            print(HELP_INFO)
+            sys.exit(1)
+
 if __name__ == '__main__':
+    deal_args()
     T = time()
-    BG_IMG = cv2.imread(DIR + 'BG.jpg')
-    imshow(BG_IMG, 'original background', 0)
+    BG_IMG = cv2.imread(DIR + BG_NAME)
+    if BG_IMG is None:
+        raise ArgError('-i: please input a proper target image name in the directory')
+    if IM_SHOW:
+        imshow(BG_IMG, 'original background', 0)
     RES = main(BG_IMG, DIR)
     print('time:', time()-T)
-    imshow(RES, 'result', 1)
-    # imwrite(RES, OUTNAME)
+    if IM_SHOW:
+        imshow(RES, 'result', 1)
+    if IM_WRITE:
+        imwrite(RES, OUTNAME)
